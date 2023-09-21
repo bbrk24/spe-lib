@@ -20,6 +20,8 @@ export default class Language {
             }
         }
         const phoneme = this.phonemes.find(el => isEqual(el.features, features));
-        return phoneme ?? new Phoneme('?', features);
+        if (phoneme) return phoneme;
+        console.warn('No phoneme for feature set:', features);
+        return new Phoneme('?', features);
     }
 };
