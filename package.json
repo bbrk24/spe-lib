@@ -1,5 +1,10 @@
 {
   "devDependencies": {
+    "@types/lodash": "^4.14.198",
+    "type-fest": "^4.3.1",
     "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21"
   }
 }
