@@ -7,19 +7,19 @@ export default interface PhonemeMatcher {
     toString(): string;
 };
 
-export class ExactPhonemeMatcher implements PhonemeMatcher {
-    private phoneme: Phoneme;
+export class PhonemeSymbolMatcher implements PhonemeMatcher {
+    private symbol: string;
 
-    constructor(phoneme: Phoneme) {
-        this.phoneme = phoneme;
+    constructor(symbol: string) {
+        this.symbol = symbol;
     }
     
     matches(phoneme: ReadonlyDeep<Phoneme>): boolean {
-        return _.isEqual(phoneme, this.phoneme);
+        return this.symbol === phoneme.symbol;
     }
 
     toString(): string {
-        return this.phoneme.symbol;
+        return this.symbol;
     }
 };
 
@@ -40,21 +40,5 @@ export class FeatureMatcher implements PhonemeMatcher {
         const present = Array.from(this.presentFeatures, el => '+' + el);
         const absent = Array.from(this.absentFeatures, el => '-' + el);
         return `[${present.concat(absent).join(' ')}]`;
-    }
-};
-
-export class PhonemeSetMatcher implements PhonemeMatcher {
-    private matchers: PhonemeMatcher[];
-
-    constructor(matchers: PhonemeMatcher[]) {
-        this.matchers = matchers;
-    }
-
-    matches(phoneme: ReadonlyDeep<Phoneme>): boolean {
-        return this.matchers.some(el => el.matches(phoneme));
-    }
-
-    toString(): string {
-        return `\{${this.matchers}\}`;
     }
 };

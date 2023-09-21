@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import Rule from './Rule';
 import Phoneme from './models/Phoneme';
 
@@ -17,14 +18,14 @@ export default class RuleSet {
             if (rule.requiresWordInitial && rule.requiresWordFinal && result.length > 1)
                 continue;
             else if (rule.requiresWordFinal) {
-                // FIXME: empty result?
-                const { changed, segment } = result.pop()!;
+                const { changed, segment } = _.last(result) ?? { changed: true, segment: [] };
                 if (changed) continue;
+                result.pop();
                 result.push(...rule.processWord(segment));
             } else if (rule.requiresWordInitial) {
-                // FIXME: empty result?
-                const { changed, segment } = result.shift()!;
+                const { changed, segment } = result[0] ?? { changed: true, segment: [] };
                 if (changed) continue;
+                result.shift();
                 // @ts-expect-error wtf
                 result = rule.processWord(segment).concat(result);
             }

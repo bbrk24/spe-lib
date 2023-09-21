@@ -4,7 +4,7 @@ import Phoneme from './Phoneme';
 import { ObjectMap } from './misc';
 
 export default class Language {
-    private phonemes: Phoneme[];
+    phonemes: Phoneme[];
 
     constructor(phonemes: Phoneme[]) {
         this.phonemes = phonemes;
