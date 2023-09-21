@@ -1,6 +1,6 @@
 import { ReadonlyDeep } from "type-fest";
 import Phoneme from "./models/Phoneme";
-import PhonemeMatcher, { FeatureMatcher, PhonemeSymbolMatcher } from "./models/PhonemeMatcher";
+import PhonemeMatcher, { FeatureMatcher, PhonemeSymbolMatcher } from "./PhonemeMatcher";
 import _ from "lodash";
 
 export default abstract class PhonemeStringMatcher {
@@ -172,27 +172,28 @@ abstract class MultipleStringMatcher extends PhonemeStringMatcher {
     }
 
     protected override getCanonical(): PhonemeStringMatcher {
-        switch (this.matchers.length) {
-        case 0: return this.empty;
-        case 1: return this.matchers[0];
-        default:
-            var isModified = false
-            const canonArray = this.matchers.flatMap(el => {
-                // @ts-ignore ????
-                const c = el.getCanonical();
-                if (c === this.empty) {
-                    isModified = true;
-                    return [];
-                }
-                if (c.constructor === this.constructor) {
-                    isModified = true;
-                    return (c as MultipleStringMatcher).matchers;
-                }
-                isModified ||= (c !== el);
-                return [c];
-            });
-            if (!isModified) return this;
-            return new CompositePhonemeMatcher(canonArray);
+        let isModified = false
+        const canonArray = this.matchers.flatMap(el => {
+            // @ts-ignore ????
+            const c = el.getCanonical();
+            if (c === this.empty) {
+                isModified = true;
+                return [];
+            }
+            if (c.constructor === this.constructor) {
+                isModified = true;
+                return (c as MultipleStringMatcher).matchers;
+            }
+            isModified ||= (c !== el);
+            return [c];
+        });
+        let base = this;
+        // @ts-expect-error
+        if (isModified) base = new (this.constructor)(canonArray);
+        switch (base.matchers.length) {
+        case 0: return base.empty;
+        case 1: return base.matchers[0];
+        default: return base;
         }
     }
 }

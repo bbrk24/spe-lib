@@ -65,10 +65,10 @@ export default class Rule {
 
     processWord<T extends Phoneme | ReadonlyDeep<Phoneme>>(word: readonly T[]): { changed: boolean, segment: T[] }[] {
         let index = 0;
+        let lastMatchIdx = 0;
         const result: { changed: boolean, segment: T[] }[] = [];
         
         while(true) {
-            const prevIdx = index; // save this for later
             // See if the context prefix has any matches
             const prefixMatch = this.contextPrefix.nextMatch(word, index);
             if (!prefixMatch) break;
@@ -83,16 +83,17 @@ export default class Rule {
             const suffixIdx = inputIdx + inputLength;
             const suffixLength = this.contextSuffix.matchLength(word, suffixIdx);
             if (suffixLength < 0) continue;
-            // Advance the index since we know we have a match
-            index = suffixIdx;
             // Add the sections to the result
-            result.push({ changed: false, segment: word.slice(prevIdx, inputIdx) });
+            result.push({ changed: false, segment: word.slice(lastMatchIdx, inputIdx) });
             const inputMatch = word.slice(inputIdx, suffixIdx);
             // Phoneme is not assignable to ReadonlyObjectDeep<Phoneme>, hence the cast
             result.push({ changed: true, segment: this.apply(inputMatch) as T[] });
+            // Advance the index since we know we have a match
+            index = suffixIdx;
+            lastMatchIdx = index;
         }
 
-        result.push({ changed: false, segment: word.slice(index) });
+        result.push({ changed: false, segment: word.slice(lastMatchIdx) });
 
         return result.filter(el => el.changed || el.segment.length);
     }

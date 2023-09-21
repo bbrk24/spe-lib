@@ -1,6 +1,5 @@
 import { ReadonlyDeep } from 'type-fest';
-import Phoneme from './Phoneme';
-import _ from 'lodash';
+import Phoneme from './models/Phoneme';
 
 export default interface PhonemeMatcher {
     matches(phoneme: ReadonlyDeep<Phoneme>): boolean;
@@ -33,7 +32,9 @@ export class FeatureMatcher implements PhonemeMatcher {
     }
 
     matches(phoneme: ReadonlyDeep<Phoneme>): boolean {
-        return _.every(phoneme.features, (el: string) => this.presentFeatures.has(el) && !this.absentFeatures.has(el));
+        // _.every only works for ArrayLikes, not Iterables
+        return [...this.presentFeatures].every(el => phoneme.features.has(el))
+            && [...this.absentFeatures].every(el => !phoneme.features.has(el));
     }
 
     toString(): string {

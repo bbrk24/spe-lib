@@ -6,4 +6,8 @@ export default class Phoneme {
         this.symbol = symbol;
         this.features = new Set(features);
     }
+
+    toString() {
+        return this.symbol;
+    }
 };

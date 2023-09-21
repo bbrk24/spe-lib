@@ -29,6 +29,18 @@ export default class RuleSet {
                 // @ts-expect-error wtf
                 result = rule.processWord(segment).concat(result);
             }
+            // Merge adjacent sections with the same "changed" status
+            result = result.reduce<typeof result>((prev, el) => {
+                const lastSeg = _.last(prev);
+                if (!lastSeg) return [el];
+                if (lastSeg.changed === el.changed) {
+                    // @ts-expect-error shut up
+                    lastSeg.segment.push(...el.segment);
+                } else {
+                    prev.push(el);
+                }
+                return prev;
+            }, [])
         }
         return result.reduce<Phoneme[]>((prev, el) => prev.concat(el.segment), []);
     }
