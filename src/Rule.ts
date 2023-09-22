@@ -23,6 +23,7 @@ export default class Rule {
         const contextSplit = slashSplit[1].split('_').filter(Boolean);
         this.requiresWordInitial = contextSplit[0].includes('#');
         this.contextPrefix = PhonemeStringMatcher.parse(contextSplit[0]);
+        contextSplit[1] ??= '';
         this.requiresWordFinal = contextSplit[1].includes('#');
         this.contextSuffix = PhonemeStringMatcher.parse(contextSplit[1]);
         const outputStr = slashSplit[0].trim();
@@ -45,7 +46,7 @@ export default class Rule {
                     ),
                 ];
             }
-            return Array.from(el, c => {
+            return Array.from(el.replace(/\s+/gu, ''), c => {
                 if (c === NullMatcher.string) return null;
                 const phoneme = this.language.phonemes.find(ph => ph.symbol === c);
                 if (!phoneme) throw new Error(`No phoneme with symbol '${c}'`);

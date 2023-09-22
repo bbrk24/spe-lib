@@ -1,6 +1,9 @@
 import Phoneme from './models/Phoneme';
 import PhonemeMatcher, { FeatureMatcher, PhonemeSymbolMatcher } from './PhonemeMatcher';
 
+// Workaround for the fact that `protected` doesn't quite do what I want
+const getCanonical = Symbol('getCanonical');
+
 export default abstract class PhonemeStringMatcher {
     // Pseudo-regex that's dynamic for the subscript characters chosen. Matches repeatable segments.
     private static readonly fakeRegex = {
@@ -42,7 +45,7 @@ export default abstract class PhonemeStringMatcher {
     abstract toString(): string;
 
     static parse(str: string): PhonemeStringMatcher {
-        return PhonemeStringMatcher.parseImpl(str).getCanonical();
+        return PhonemeStringMatcher.parseImpl(str)[getCanonical]();
     }
     
     private static readonly parseImpl = (str: string): PhonemeStringMatcher => {
@@ -132,7 +135,7 @@ export default abstract class PhonemeStringMatcher {
 
     // It's not going to return 'this' exactly in all subclasses
     // eslint-disable-next-line @typescript-eslint/prefer-return-this-type
-    protected getCanonical(): PhonemeStringMatcher {
+    [getCanonical](): PhonemeStringMatcher {
         return this;
     }
 }
@@ -175,11 +178,10 @@ abstract class MultipleStringMatcher extends PhonemeStringMatcher {
         super();
     }
 
-    protected override getCanonical(): PhonemeStringMatcher {
+    override [getCanonical](): PhonemeStringMatcher {
         let isModified = false as boolean;
         const canonArray = this.matchers.flatMap(el => {
-            // @ts-expect-error ????
-            const c = el.getCanonical();
+            const c = el[getCanonical]();
             if (c === this.empty) {
                 isModified = true;
                 return [];
@@ -233,7 +235,7 @@ export class RepeatedMatcher extends PhonemeStringMatcher {
     }
 
     override matchLength(word: readonly Phoneme[], start = 0): number {
-        let totalLength = -1;
+        let totalLength = 0;
         let index = start;
         let count = 0;
         for (;;) {
@@ -256,11 +258,12 @@ export class RepeatedMatcher extends PhonemeStringMatcher {
         return `${baseStr.repeat(this.minCount)}(${baseStr})*`;
     }
 
-    protected override getCanonical(): PhonemeStringMatcher {
-        // @ts-expect-error ????
-        const c = this.base.getCanonical();
-        if (c instanceof RepeatedMatcher)
+    override [getCanonical](): PhonemeStringMatcher {
+        const c = this.base[getCanonical]();
+        if (c instanceof RepeatedMatcher) {
+            if (this.minCount === 0) return c;
             return new RepeatedMatcher(c.base, c.minCount + this.minCount);
+        }
         if (this.base === c)
             return this;
         return new RepeatedMatcher(this.base, this.minCount);

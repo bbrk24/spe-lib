@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import last from 'lodash/last';
 import Rule from './Rule';
 import Phoneme from './models/Phoneme';
 import { NullMatcher, RepeatedMatcher } from './PhonemeStringMatcher';
@@ -81,7 +81,7 @@ export default class RuleSet {
             if (rule.requiresWordInitial && rule.requiresWordFinal && result.length > 1)
                 continue;
             else if (rule.requiresWordFinal) {
-                const { changed, segment } = _.last(result) ?? { changed: true, segment: [] };
+                const { changed, segment } = last(result) ?? { changed: true, segment: [] };
                 if (changed) continue;
                 result.pop();
                 result.push(...rule.processWord(segment));
@@ -99,7 +99,7 @@ export default class RuleSet {
             }
             // Merge adjacent sections with the same "changed" status
             result = result.reduce<typeof result>((prev, el) => {
-                const lastSeg = _.last(prev);
+                const lastSeg = last(prev);
                 if (!lastSeg) return [el];
                 if (lastSeg.changed === el.changed) {
                     lastSeg.segment.push(...el.segment);

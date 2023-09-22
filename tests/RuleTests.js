@@ -28,3 +28,10 @@ testAssert(
     ruleSet2.process([i, a]),
     [e, a]
 )
+
+const ruleSet3 = new RuleSet('i₂ → i / _', smolLang);
+
+testAssert(
+    ruleSet3.process([i, i, i, i]),
+    [i]
+);
