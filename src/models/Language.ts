@@ -1,7 +1,7 @@
 import isEqual from 'lodash/isEqual';
 import { ReadonlyDeep } from 'type-fest';
 import Phoneme from './Phoneme';
-import { ObjectMap } from './misc';
+import FeatureDiff from './FeatureDiff';
 
 export default class Language {
     phonemes: Phoneme[];
@@ -10,15 +10,12 @@ export default class Language {
         this.phonemes = phonemes;
     }
 
-    applyChanges(base: ReadonlyDeep<Phoneme>, changes: Readonly<ObjectMap<string, boolean>>): Phoneme {
+    applyChanges(base: ReadonlyDeep<Phoneme>, changes: FeatureDiff<Iterable<string>>): Phoneme {
         const features = new Set(base.features);
-        for (const [feature, shouldApply] of Object.entries(changes)) {
-            if (shouldApply) {
-                features.add(feature);
-            } else {
-                features.delete(feature);
-            }
-        }
+        for (const feature of changes.presentFeatures)
+            features.add(feature);
+        for (const feature of changes.absentFeatures)
+            features.delete(feature);
         const phoneme = this.phonemes.find(el => isEqual(el.features, features));
         if (phoneme) return phoneme;
         console.warn('No phoneme for feature set:', features);

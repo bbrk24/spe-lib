@@ -1,5 +1,6 @@
 import { ReadonlyDeep } from 'type-fest';
 import Phoneme from './models/Phoneme';
+import FeatureDiff from './models/FeatureDiff';
 
 export default interface PhonemeMatcher {
     matches(phoneme: ReadonlyDeep<Phoneme>): boolean;
@@ -22,24 +23,10 @@ export class PhonemeSymbolMatcher implements PhonemeMatcher {
     }
 };
 
-export class FeatureMatcher implements PhonemeMatcher {
-    private presentFeatures: Set<string>;
-    private absentFeatures: Set<string>;
-
-    constructor(presentFeatures: Set<string>, absentFeatures: Set<string>) {
-        this.presentFeatures = presentFeatures;
-        this.absentFeatures = absentFeatures;
-    }
-
+export class FeatureMatcher extends FeatureDiff<Set<string>> implements PhonemeMatcher {
     matches(phoneme: ReadonlyDeep<Phoneme>): boolean {
         // _.every only works for ArrayLikes, not Iterables
         return [...this.presentFeatures].every(el => phoneme.features.has(el))
             && [...this.absentFeatures].every(el => !phoneme.features.has(el));
-    }
-
-    toString(): string {
-        const present = Array.from(this.presentFeatures, el => '+' + el);
-        const absent = Array.from(this.absentFeatures, el => '-' + el);
-        return `[${present.concat(absent).join(' ')}]`;
     }
 };

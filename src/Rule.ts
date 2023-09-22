@@ -1,31 +1,17 @@
 import { ReadonlyDeep } from "type-fest";
 import Phoneme from "./models/Phoneme";
-import PhonemeStringMatcher, { NullMatcher, RepeatedMatcher } from "./PhonemeStringMatcher";
+import PhonemeStringMatcher from "./PhonemeStringMatcher";
 import Language from "./models/Language";
-import { ObjectMap } from "./models/misc";
+import FeatureDiff from "./models/FeatureDiff";
+import zip from "lodash/zip";
 
 export default class Rule {
     static arrow = '→';
 
-    static get null() {
-        return NullMatcher.string;
-    }
-    static set null(str: string) {
-        NullMatcher.string = str;
-    }
-
-    static get subscripts() {
-        return RepeatedMatcher.subscripts;
-    }
-    static set subscripts(strs: string[]) {
-        RepeatedMatcher.subscripts = strs;
-    }
-
     input: PhonemeStringMatcher;
     contextPrefix: PhonemeStringMatcher;
     contextSuffix: PhonemeStringMatcher;
-    output: Phoneme | ObjectMap<string, boolean>;
-    representation: string;
+    output: (Phoneme | FeatureDiff<string[]>)[];
     language: Language;
 
     // Convenience properties for RuleSet. Not used in evaluation.
@@ -33,34 +19,50 @@ export default class Rule {
     requiresWordFinal: boolean;
 
     constructor(str: string, language: Language) {
-        this.representation = str;
         this.language = language;
         const arrowSplit = str.split(Rule.arrow);
         this.input = PhonemeStringMatcher.parse(arrowSplit[0]);
         const slashSplit = arrowSplit[1].split('/');
-        const outputStr = slashSplit[0].trim();
-        if (outputStr.startsWith('[') && outputStr.endsWith(']')) {
-            this.output = Object.fromEntries(
-                outputStr.substring(1, outputStr.length - 1)
-                    .split(/\s+/gu)
-                    .map(el => [el.substring(1), el[0] === '+'])
-            );
-        } else {
-            const phoneme = language.phonemes.find(el => el.symbol === outputStr);
-            if (!phoneme) throw new Error(`No phoneme for symbol '${phoneme}'`);
-            this.output = phoneme;
-        }
         const contextSplit = slashSplit[1].split('_').filter(Boolean);
         this.requiresWordInitial = contextSplit[0].includes('#');
         this.contextPrefix = PhonemeStringMatcher.parse(contextSplit[0]);
         this.requiresWordFinal = contextSplit[1].includes('#');
         this.contextSuffix = PhonemeStringMatcher.parse(contextSplit[1]);
+        const outputStr = slashSplit[0].trim();
+        this.output = this.parseOutputStr(outputStr);
     }
 
+    private parseOutputStr(str: string): (Phoneme | FeatureDiff<string[]>)[] {
+        // TODO: verify that brackets are balanced
+        const parts = str.split(/[\[\]]/gu);
+        if (parts.length % 2 !== 1)
+            throw new SyntaxError(`Odd number of brackets in string: '${str}'`);
+        return parts.flatMap<Phoneme | FeatureDiff<string[]>>((el, i) => {
+            el = el.trim();
+            if (i % 2) {
+                const features = str.substring(1, str.length - 1).trim().split(/\s+/gu);
+                return [
+                    new FeatureDiff(
+                        features.flatMap(x => x[0] === '+' ? [x.substring(1)] : []),
+                        features.flatMap(x => x[0] === '-' ? [x.substring(1)] : [])
+                    )
+                    ]
+            }
+            return Array.from(el, c => {
+                const phoneme = this.language.phonemes.find(ph => ph.symbol === c)
+                if (!phoneme) throw new Error(`No phoneme with symbol '${c}'`);
+                return phoneme;
+            });
+        });
+    };
+
     private apply(input: ReadonlyDeep<Phoneme>[]) {
-        if (input.length !== 1) throw new Error('Input match is too long');
-        if (this.output instanceof Phoneme) return [this.output];
-        return [this.language.applyChanges(input[0], this.output)];
+        if (input.length !== this.output.length)
+            throw new Error('Length mismatch');
+        return zip(input, this.output)
+            .map(([i, o]) =>
+                o instanceof Phoneme ? o : this.language.applyChanges(i!, o!)
+            );
     }
 
     processWord<T extends Phoneme | ReadonlyDeep<Phoneme>>(word: readonly T[]): { changed: boolean, segment: T[] }[] {
@@ -99,6 +101,6 @@ export default class Rule {
     }
 
     toString(): string {
-        return this.representation;
+        return `${this.input} ${Rule.arrow} ${this.output.join('')} / ${this.contextPrefix}_${this.contextSuffix}`
     }
 };

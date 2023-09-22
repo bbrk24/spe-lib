@@ -11,12 +11,7 @@ const i = new Phoneme('i', ['front', 'high']);
 
 const smolLang = new Language([a, u, e, i]);
 
-Rule.arrow = '>';
-const rule1 = new Rule('[-high] > [+high] / _#', smolLang);
-const rule2 = new Rule('[+high] > [-high] / _#', smolLang);
-
-const ruleSet = new RuleSet('');
-ruleSet.rules = [rule1, rule2];
+const ruleSet = new RuleSet('[-high] → [+high] / _#', smolLang);
 
 testAssert(
     ruleSet.process([a, a]),
@@ -26,7 +21,10 @@ testAssert(
     ruleSet.process([u, e]),
     [u, i]
 );
+
+const ruleSet2 = new RuleSet('i → [-high] / _[-high]', smolLang);
+
 testAssert(
-    ruleSet.process([i, i]),
-    [i, e]
-);
+    ruleSet2.process([i, a]),
+    [e, a]
+)

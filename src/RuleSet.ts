@@ -1,15 +1,39 @@
 import _ from 'lodash';
 import Rule from './Rule';
 import Phoneme from './models/Phoneme';
+import { NullMatcher, RepeatedMatcher } from './PhonemeStringMatcher';
+import { Language } from '.';
 
 export default class RuleSet {
-    rules: Rule[];
+    private rules: Rule[];
     representation: string;
 
-    constructor(str: string) {
+    static get arrow() {
+        return Rule.arrow;
+    }
+    static set arrow(str: string) {
+        Rule.arrow = str;
+    }
+
+    static get null() {
+        return NullMatcher.string;
+    }
+    static set null(str: string) {
+        NullMatcher.string = str;
+    }
+
+    static get subscripts() {
+        return RepeatedMatcher.subscripts;
+    }
+    static set subscripts(strs: string[]) {
+        RepeatedMatcher.subscripts = strs;
+    }
+
+    constructor(str: string, language: Language) {
         this.representation = str;
-        // TODO: rules
-        this.rules = [];
+        if (/[()<>]/gu.test(str))
+            throw new Error('optional things not implemented')
+        this.rules = [new Rule(str, language)];
     }
 
     process(word: readonly Phoneme[]): Phoneme[] {
@@ -28,6 +52,12 @@ export default class RuleSet {
                 result.shift();
                 // @ts-expect-error wtf
                 result = rule.processWord(segment).concat(result);
+            } else {
+                for (let i = result.length - 1; i >= 0; --i) {
+                    if (result[i].changed) continue;
+                    const newSegments = rule.processWord(result[i].segment);
+                    result.splice(i, 1, ...newSegments)
+                }
             }
             // Merge adjacent sections with the same "changed" status
             result = result.reduce<typeof result>((prev, el) => {

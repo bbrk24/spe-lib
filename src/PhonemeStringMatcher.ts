@@ -222,8 +222,8 @@ class CompositePhonemeMatcher extends MultipleStringMatcher {
 export class RepeatedMatcher extends PhonemeStringMatcher {
     static subscripts = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
 
-    base: PhonemeStringMatcher;
-    minCount: number;
+    private base: PhonemeStringMatcher;
+    private minCount: number;
 
     constructor(base: PhonemeStringMatcher, minCount = 0) {
         super();

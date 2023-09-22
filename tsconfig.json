@@ -10,5 +10,6 @@
     "skipDefaultLibCheck": true,
     "moduleResolution": "Node16",
     "sourceMap": true,
-  }
+  },
+  "include": ["src"]
 }
