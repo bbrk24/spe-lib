@@ -7,14 +7,14 @@ import zip from 'lodash/zip';
 export default class Rule {
     static arrow = '→';
 
-    readonly input: PhonemeStringMatcher;
-    readonly contextPrefix: PhonemeStringMatcher;
-    readonly contextSuffix: PhonemeStringMatcher;
-    readonly output: readonly (FeatureDiff<string[]> | Phoneme | null)[];
+    private readonly input: PhonemeStringMatcher;
+    private readonly contextPrefix: PhonemeStringMatcher;
+    private readonly contextSuffix: PhonemeStringMatcher;
+    private readonly output: readonly (FeatureDiff<string[]> | Phoneme | null)[];
 
     // Convenience properties for RuleSet. Not used in evaluation.
-    requiresWordInitial: boolean;
-    requiresWordFinal: boolean;
+    readonly requiresWordInitial: boolean;
+    readonly requiresWordFinal: boolean;
 
     constructor(str: string, private readonly language: Language) {
         const arrowSplit = str.split(Rule.arrow);
