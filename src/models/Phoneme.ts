@@ -1,13 +1,11 @@
 export default class Phoneme {
-    symbol: string;
-    features: Set<string>;
+    readonly features: ReadonlySet<string>;
 
-    constructor(symbol: string, features: Iterable<string>) {
-        this.symbol = symbol;
+    constructor(public readonly symbol: string, features: Iterable<string>) {
         this.features = new Set(features);
     }
 
-    toString() {
+    toString(): string {
         return this.symbol;
     }
-};
+}

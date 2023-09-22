@@ -5,56 +5,60 @@ import { NullMatcher, RepeatedMatcher } from './PhonemeStringMatcher';
 import { Language } from '.';
 
 export default class RuleSet {
-    private rules: Rule[];
-    representation: string;
-
     static greekLetters = [...'αβγδεζηθικλμνξοπρσςτυφχψω'];
+    
+    // Intentionally omitting the /g flag -- all paren groups are independent
+    private static readonly parenGroupRegex = /\(([^)]+)\)(?!\*)/u;
 
-    static get arrow() {
+    private static readonly angleBracketRegex = /<([^>]+)>/gu;
+
+    static get arrow(): string {
         return Rule.arrow;
     }
     static set arrow(str: string) {
         Rule.arrow = str;
     }
 
-    static get null() {
+    static get null(): string {
         return NullMatcher.string;
     }
     static set null(str: string) {
         NullMatcher.string = str;
     }
 
-    static get subscripts() {
+    static get subscripts(): string[] {
         return RepeatedMatcher.subscripts;
     }
     static set subscripts(strs: string[]) {
         RepeatedMatcher.subscripts = strs;
     }
 
-    constructor(str: string, language: Language) {
-        this.representation = str;
-        this.rules = RuleSet.makeRuleList(str, language);
+    private readonly rules: Rule[];
+
+    constructor(readonly representation: string, language: Language) {
+        this.rules = RuleSet.makeRuleList(representation, language);
     }
-
-    // Intentionally omitting the /g flag -- all paren groups are independent
-    private static readonly parenGroupRegex = /\(([^)]+)\)(?!\*)/u;
-
-    private static readonly angleBracketRegex = /<([^>]+)>/gu;
 
     private static makeRuleList(str: string, language: Language): Rule[] {
         // Handle parens
         if (RuleSet.parenGroupRegex.test(str)) {
             return [
-                ...RuleSet.makeRuleList(str.replace(RuleSet.parenGroupRegex, (_, contents) => contents), language),
-                ...RuleSet.makeRuleList(str.replace(RuleSet.parenGroupRegex, ''), language)
+                ...RuleSet.makeRuleList(
+                    str.replace(RuleSet.parenGroupRegex, (_, contents: string) => contents),
+                    language
+                ),
+                ...RuleSet.makeRuleList(str.replace(RuleSet.parenGroupRegex, ''), language),
             ];
         }
 
         // Handle angle brackets
         if (RuleSet.angleBracketRegex.test(str)) {
             return [
-                ...RuleSet.makeRuleList(str.replace(RuleSet.angleBracketRegex, (_, contents) => contents), language),
-                ...RuleSet.makeRuleList(str.replace(RuleSet.angleBracketRegex, ''), language)
+                ...RuleSet.makeRuleList(
+                    str.replace(RuleSet.angleBracketRegex, (_, contents: string) => contents),
+                    language
+                ),
+                ...RuleSet.makeRuleList(str.replace(RuleSet.angleBracketRegex, ''), language),
             ];
         }
 
@@ -63,7 +67,7 @@ export default class RuleSet {
         if (greekLetter) {
             return [
                 ...RuleSet.makeRuleList(str.replaceAll(greekLetter, '+'), language),
-                ...RuleSet.makeRuleList(str.replaceAll(greekLetter, '-'), language)
+                ...RuleSet.makeRuleList(str.replaceAll(greekLetter, '-'), language),
             ];
         }
 
@@ -71,7 +75,7 @@ export default class RuleSet {
         return [new Rule(str, language)];
     }
 
-    process(word: readonly Phoneme[]): Phoneme[] {
+    process(word: Phoneme[]): Phoneme[] {
         let result = [{ changed: false, segment: word }];
         for (const rule of this.rules) {
             if (rule.requiresWordInitial && rule.requiresWordFinal && result.length > 1)
@@ -85,7 +89,6 @@ export default class RuleSet {
                 const { changed, segment } = result[0] ?? { changed: true, segment: [] };
                 if (changed) continue;
                 result.shift();
-                // @ts-expect-error wtf
                 result = rule.processWord(segment).concat(result);
             } else {
                 for (let i = result.length - 1; i >= 0; --i) {
@@ -99,14 +102,13 @@ export default class RuleSet {
                 const lastSeg = _.last(prev);
                 if (!lastSeg) return [el];
                 if (lastSeg.changed === el.changed) {
-                    // @ts-expect-error shut up
                     lastSeg.segment.push(...el.segment);
                 } else {
                     prev.push(el);
                 }
                 return prev;
-            }, [])
+            }, []);
         }
         return result.reduce<Phoneme[]>((prev, el) => prev.concat(el.segment), []);
     }
-};
+}

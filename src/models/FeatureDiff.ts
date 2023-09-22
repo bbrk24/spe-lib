@@ -1,8 +1,5 @@
 export default class FeatureDiff<out T extends Iterable<string>> {
-    readonly presentFeatures: T;
-    readonly absentFeatures: T;
-
-    constructor(presentFeatures: T, absentFeatures: T) {
+    constructor(readonly presentFeatures: T, readonly absentFeatures: T) {
         this.presentFeatures = presentFeatures;
         this.absentFeatures = absentFeatures;
     }
@@ -12,4 +9,4 @@ export default class FeatureDiff<out T extends Iterable<string>> {
         const absent = Array.from(this.absentFeatures, el => '-' + el);
         return `[${present.concat(absent).join(' ')}]`;
     }
-};
+}

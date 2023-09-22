@@ -1,0 +1,63 @@
+env:
+  es2021: true
+extends:
+  - eslint:recommended
+  - plugin:@typescript-eslint/strict-type-checked
+  - plugin:@typescript-eslint/stylistic-type-checked
+parser: '@typescript-eslint/parser'
+parserOptions:
+  ecmaVersion: 2021
+  project: tsconfig.json
+plugins:
+  - '@typescript-eslint'
+rules:
+  '@typescript-eslint/block-spacing': error
+  '@typescript-eslint/brace-style': error
+  '@typescript-eslint/class-methods-use-this': 
+    - error
+    - ignoreOverrideMethods: true
+  '@typescript-eslint/comma-dangle':
+    - error
+    - arrays: always-multiline
+      objects: always-multiline
+  '@typescript-eslint/comma-spacing': error
+  '@typescript-eslint/explicit-module-boundary-types': error
+  '@typescript-eslint/func-call-spacing': error
+  '@typescript-eslint/indent': error
+  '@typescript-eslint/member-delimiter-style':
+    - error
+    - singleline:
+        delimiter: comma
+  '@typescript-eslint/member-ordering':
+    - error
+    - default:
+        - - abstract-get
+          - abstract-set
+        - static-field
+        - - static-get
+          - static-set
+        - instance-field
+        - - instance-get
+          - instance-set
+        - constructor
+        - abstract-method
+        - static-method
+        - instance-method
+  '@typescript-eslint/method-signature-style': error
+  '@typescript-eslint/no-extra-semi': error
+  '@typescript-eslint/parameter-properties':
+    - error
+    - prefer: parameter-property
+  '@typescript-eslint/prefer-readonly': error
+  '@typescript-eslint/quotes':
+    - error
+    - single
+  '@typescript-eslint/semi': error
+  '@typescript-eslint/sort-type-constituents': error
+  linebreak-style:
+    - error
+    - unix
+  max-len:
+    - error
+    - code: 100
+  prefer-spread: 'off'

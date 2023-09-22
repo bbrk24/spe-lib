@@ -1,25 +1,22 @@
-import { ReadonlyDeep } from "type-fest";
-import Phoneme from "./models/Phoneme";
-import PhonemeStringMatcher, { NullMatcher } from "./PhonemeStringMatcher";
-import Language from "./models/Language";
-import FeatureDiff from "./models/FeatureDiff";
-import zip from "lodash/zip";
+import Phoneme from './models/Phoneme';
+import PhonemeStringMatcher, { NullMatcher } from './PhonemeStringMatcher';
+import Language from './models/Language';
+import FeatureDiff from './models/FeatureDiff';
+import zip from 'lodash/zip';
 
 export default class Rule {
     static arrow = '→';
 
-    input: PhonemeStringMatcher;
-    contextPrefix: PhonemeStringMatcher;
-    contextSuffix: PhonemeStringMatcher;
-    output: (Phoneme | FeatureDiff<string[]> | null)[];
-    language: Language;
+    readonly input: PhonemeStringMatcher;
+    readonly contextPrefix: PhonemeStringMatcher;
+    readonly contextSuffix: PhonemeStringMatcher;
+    readonly output: readonly (FeatureDiff<string[]> | Phoneme | null)[];
 
     // Convenience properties for RuleSet. Not used in evaluation.
     requiresWordInitial: boolean;
     requiresWordFinal: boolean;
 
-    constructor(str: string, language: Language) {
-        this.language = language;
+    constructor(str: string, private readonly language: Language) {
         const arrowSplit = str.split(Rule.arrow);
         this.input = PhonemeStringMatcher.parse(arrowSplit[0]);
         const slashSplit = arrowSplit[1].split('/');
@@ -32,48 +29,50 @@ export default class Rule {
         this.output = this.parseOutputStr(outputStr);
     }
 
-    private parseOutputStr(str: string): (Phoneme | FeatureDiff<string[]> | null)[] {
+    private parseOutputStr(str: string): (FeatureDiff<string[]> | Phoneme | null)[] {
         // TODO: verify that brackets are balanced
-        const parts = str.split(/[\[\]]/gu);
+        const parts = str.split(/[[\]]/gu);
         if (parts.length % 2 !== 1)
             throw new SyntaxError(`Odd number of brackets in string: '${str}'`);
-        return parts.flatMap<Phoneme | FeatureDiff<string[]> | null>((el, i) => {
+        return parts.flatMap<FeatureDiff<string[]> | Phoneme | null>((el, i) => {
             el = el.trim();
             if (i % 2) {
                 const features = str.substring(1, str.length - 1).trim().split(/\s+/gu);
                 return [
                     new FeatureDiff(
-                        features.flatMap(x => x[0] === '+' ? [x.substring(1)] : []),
-                        features.flatMap(x => x[0] === '-' ? [x.substring(1)] : [])
-                    )
+                        features.flatMap(x => x.startsWith('+') ? [x.substring(1)] : []),
+                        features.flatMap(x => x.startsWith('-') ? [x.substring(1)] : [])
+                    ),
                 ];
             }
             return Array.from(el, c => {
                 if (c === NullMatcher.string) return null;
-                const phoneme = this.language.phonemes.find(ph => ph.symbol === c)
+                const phoneme = this.language.phonemes.find(ph => ph.symbol === c);
                 if (!phoneme) throw new Error(`No phoneme with symbol '${c}'`);
                 return phoneme;
             });
         });
-    };
+    }
 
-    private apply(input: ReadonlyDeep<Phoneme>[]) {
+    private apply(input: Phoneme[]) {
         if (!this.output.some(el => el instanceof FeatureDiff))
             return this.output.filter(Boolean) as Phoneme[];
         if (input.length !== this.output.length)
             throw new Error('Length mismatch');
         return zip(input, this.output)
             .flatMap(([i, o]) =>
+                // It will only ever be undefined if the lengths are different
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 o == null ? [] : o instanceof Phoneme ? [o] : [this.language.applyChanges(i!, o)]
             );
     }
 
-    processWord<T extends Phoneme | ReadonlyDeep<Phoneme>>(word: readonly T[]): { changed: boolean, segment: T[] }[] {
+    processWord(word: readonly Phoneme[]): { changed: boolean, segment: Phoneme[] }[] {
         let index = 0;
         let lastMatchIdx = 0;
-        const result: { changed: boolean, segment: T[] }[] = [];
+        const result: { changed: boolean, segment: Phoneme[] }[] = [];
         
-        while(true) {
+        for (;;) {
             // See if the context prefix has any matches
             const prefixMatch = this.contextPrefix.nextMatch(word, index);
             if (!prefixMatch) break;
@@ -91,8 +90,7 @@ export default class Rule {
             // Add the sections to the result
             result.push({ changed: false, segment: word.slice(lastMatchIdx, inputIdx) });
             const inputMatch = word.slice(inputIdx, suffixIdx);
-            // Phoneme is not assignable to ReadonlyObjectDeep<Phoneme>, hence the cast
-            result.push({ changed: true, segment: this.apply(inputMatch) as T[] });
+            result.push({ changed: true, segment: this.apply(inputMatch) });
             // Advance the index since we know we have a match
             index = suffixIdx;
             lastMatchIdx = index;
@@ -104,6 +102,10 @@ export default class Rule {
     }
 
     toString(): string {
-        return `${this.input} ${Rule.arrow} ${this.output.join('')} / ${this.contextPrefix}_${this.contextSuffix}`
+        return `${this.input.toString()} ${Rule.arrow} ${this.output.join('')} / ${
+            this.contextPrefix instanceof NullMatcher ? '' : this.contextPrefix.toString()
+        }_${
+            this.contextSuffix instanceof NullMatcher ? '' : this.contextSuffix.toString()
+        }`;
     }
-};
+}
