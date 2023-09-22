@@ -1,6 +1,6 @@
 import { ReadonlyDeep } from "type-fest";
 import Phoneme from "./models/Phoneme";
-import PhonemeStringMatcher from "./PhonemeStringMatcher";
+import PhonemeStringMatcher, { NullMatcher } from "./PhonemeStringMatcher";
 import Language from "./models/Language";
 import FeatureDiff from "./models/FeatureDiff";
 import zip from "lodash/zip";
@@ -11,7 +11,7 @@ export default class Rule {
     input: PhonemeStringMatcher;
     contextPrefix: PhonemeStringMatcher;
     contextSuffix: PhonemeStringMatcher;
-    output: (Phoneme | FeatureDiff<string[]>)[];
+    output: (Phoneme | FeatureDiff<string[]> | null)[];
     language: Language;
 
     // Convenience properties for RuleSet. Not used in evaluation.
@@ -32,12 +32,12 @@ export default class Rule {
         this.output = this.parseOutputStr(outputStr);
     }
 
-    private parseOutputStr(str: string): (Phoneme | FeatureDiff<string[]>)[] {
+    private parseOutputStr(str: string): (Phoneme | FeatureDiff<string[]> | null)[] {
         // TODO: verify that brackets are balanced
         const parts = str.split(/[\[\]]/gu);
         if (parts.length % 2 !== 1)
             throw new SyntaxError(`Odd number of brackets in string: '${str}'`);
-        return parts.flatMap<Phoneme | FeatureDiff<string[]>>((el, i) => {
+        return parts.flatMap<Phoneme | FeatureDiff<string[]> | null>((el, i) => {
             el = el.trim();
             if (i % 2) {
                 const features = str.substring(1, str.length - 1).trim().split(/\s+/gu);
@@ -46,9 +46,10 @@ export default class Rule {
                         features.flatMap(x => x[0] === '+' ? [x.substring(1)] : []),
                         features.flatMap(x => x[0] === '-' ? [x.substring(1)] : [])
                     )
-                    ]
+                ];
             }
             return Array.from(el, c => {
+                if (c === NullMatcher.string) return null;
                 const phoneme = this.language.phonemes.find(ph => ph.symbol === c)
                 if (!phoneme) throw new Error(`No phoneme with symbol '${c}'`);
                 return phoneme;
@@ -57,13 +58,13 @@ export default class Rule {
     };
 
     private apply(input: ReadonlyDeep<Phoneme>[]) {
-        if (this.output.every(el => el instanceof Phoneme))
-            return [...this.output] as Phoneme[];
+        if (!this.output.some(el => el instanceof FeatureDiff))
+            return this.output.filter(Boolean) as Phoneme[];
         if (input.length !== this.output.length)
             throw new Error('Length mismatch');
         return zip(input, this.output)
-            .map(([i, o]) =>
-                o instanceof Phoneme ? o : this.language.applyChanges(i!, o!)
+            .flatMap(([i, o]) =>
+                o == null ? [] : o instanceof Phoneme ? [o] : [this.language.applyChanges(i!, o)]
             );
     }
 

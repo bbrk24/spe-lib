@@ -8,9 +8,9 @@ const i = new Phoneme('i', ['front', 'high']);
 const smolLang = new Language([a, u, e, i]);
 
 const rule = new RuleSet(
-    'i → [-high] / _[-high]',
+    '[] → [αhigh] / _[αhigh]',
     smolLang
 );
 
 console.log(rule.process([i, a]).join(''));
-console.log(rule.process([i, u]).join(''));
+console.log(rule.process([e, u]).join(''));

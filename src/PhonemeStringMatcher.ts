@@ -160,7 +160,7 @@ class SinglePhonemeStringMatcher extends PhonemeStringMatcher {
         return this.base.toString();
     }
 }
-``
+
 abstract class MultipleStringMatcher extends PhonemeStringMatcher {
     protected matchers: PhonemeStringMatcher[];
 
@@ -187,9 +187,8 @@ abstract class MultipleStringMatcher extends PhonemeStringMatcher {
             isModified ||= (c !== el);
             return [c];
         });
-        let base = this;
-        // @ts-expect-error
-        if (isModified) base = new (this.constructor)(canonArray);
+        let base: MultipleStringMatcher = this;
+        if (isModified) base = new (this.constructor as new(matchers: PhonemeStringMatcher[]) => MultipleStringMatcher)(canonArray);
         switch (base.matchers.length) {
         case 0: return base.empty;
         case 1: return base.matchers[0];

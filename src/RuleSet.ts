@@ -8,6 +8,8 @@ export default class RuleSet {
     private rules: Rule[];
     representation: string;
 
+    static greekLetters = [...'αβγδεζηθικλμνξοπρσςτυφχψω'];
+
     static get arrow() {
         return Rule.arrow;
     }
@@ -31,9 +33,42 @@ export default class RuleSet {
 
     constructor(str: string, language: Language) {
         this.representation = str;
-        if (/[()<>]/gu.test(str))
-            throw new Error('optional things not implemented')
-        this.rules = [new Rule(str, language)];
+        this.rules = RuleSet.makeRuleList(str, language);
+    }
+
+    // Intentionally omitting the /g flag -- all paren groups are independent
+    private static readonly parenGroupRegex = /\(([^)]+)\)(?!\*)/u;
+
+    private static readonly angleBracketRegex = /<([^>]+)>/gu;
+
+    private static makeRuleList(str: string, language: Language): Rule[] {
+        // Handle parens
+        if (RuleSet.parenGroupRegex.test(str)) {
+            return [
+                ...RuleSet.makeRuleList(str.replace(RuleSet.parenGroupRegex, (_, contents) => contents), language),
+                ...RuleSet.makeRuleList(str.replace(RuleSet.parenGroupRegex, ''), language)
+            ];
+        }
+
+        // Handle angle brackets
+        if (RuleSet.angleBracketRegex.test(str)) {
+            return [
+                ...RuleSet.makeRuleList(str.replace(RuleSet.angleBracketRegex, (_, contents) => contents), language),
+                ...RuleSet.makeRuleList(str.replace(RuleSet.angleBracketRegex, ''), language)
+            ];
+        }
+
+        // Handle greek letters
+        const greekLetter = RuleSet.greekLetters.find(letter => str.includes(letter));
+        if (greekLetter) {
+            return [
+                ...RuleSet.makeRuleList(str.replaceAll(greekLetter, '+'), language),
+                ...RuleSet.makeRuleList(str.replaceAll(greekLetter, '-'), language)
+            ];
+        }
+
+        // Base case
+        return [new Rule(str, language)];
     }
 
     process(word: readonly Phoneme[]): Phoneme[] {
@@ -56,7 +91,7 @@ export default class RuleSet {
                 for (let i = result.length - 1; i >= 0; --i) {
                     if (result[i].changed) continue;
                     const newSegments = rule.processWord(result[i].segment);
-                    result.splice(i, 1, ...newSegments)
+                    result.splice(i, 1, ...newSegments);
                 }
             }
             // Merge adjacent sections with the same "changed" status

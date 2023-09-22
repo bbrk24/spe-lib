@@ -1,4 +1,8 @@
 {
+  "name": "spe-lib",
+  "version": "0.1.0",
+  "exports": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "devDependencies": {
     "@types/lodash": "^4.14.198",
     "type-fest": "^4.3.1",
@@ -6,5 +10,25 @@
   },
   "dependencies": {
     "lodash": "^4.17.21"
-  }
+  },
+  "peerDependencies": {
+    "type-fest": "^4.2.0",
+    "typescript": "^5.2.2"
+  },
+  "peerDependenciesMeta": {
+    "type-fest": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "prepublish": "tsc",
+    "test": "tsc && ./test.js"
+  },
+  "files": [
+    "dist/*",
+    "dist/**/*"
+  ]
 }
