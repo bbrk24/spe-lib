@@ -57,6 +57,8 @@ export default class Rule {
     };
 
     private apply(input: ReadonlyDeep<Phoneme>[]) {
+        if (this.output.every(el => el instanceof Phoneme))
+            return [...this.output] as Phoneme[];
         if (input.length !== this.output.length)
             throw new Error('Length mismatch');
         return zip(input, this.output)
