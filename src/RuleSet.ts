@@ -2,7 +2,7 @@ import last from 'lodash/last';
 import Rule from './Rule';
 import Phoneme from './models/Phoneme';
 import { NullMatcher, RepeatedMatcher } from './PhonemeStringMatcher';
-import { Language } from '.';
+import Language from './models/Language';
 
 export default class RuleSet {
     static greekLetters = [...'αβγδεζηθικλμνξοπρσςτυφχψω'];
@@ -36,43 +36,40 @@ export default class RuleSet {
     private readonly rules: Rule[];
 
     constructor(readonly representation: string, language: Language) {
-        this.rules = RuleSet.makeRuleList(representation, language);
+        this.rules = Array.from(RuleSet.makeRuleList(representation, language));
     }
 
-    private static makeRuleList(str: string, language: Language): Rule[] {
+    private static *makeRuleList(str: string, language: Language): Generator<Rule, void> {
         // Handle parens
         if (RuleSet.parenGroupRegex.test(str)) {
-            return [
-                ...RuleSet.makeRuleList(
-                    str.replace(RuleSet.parenGroupRegex, (_, contents: string) => contents),
-                    language
-                ),
-                ...RuleSet.makeRuleList(str.replace(RuleSet.parenGroupRegex, ''), language),
-            ];
+            yield* RuleSet.makeRuleList(
+                str.replace(RuleSet.parenGroupRegex, (_, contents: string) => contents),
+                language
+            );
+            yield* RuleSet.makeRuleList(str.replace(RuleSet.parenGroupRegex, ''), language);
+            return;
         }
 
         // Handle angle brackets
         if (RuleSet.angleBracketRegex.test(str)) {
-            return [
-                ...RuleSet.makeRuleList(
-                    str.replace(RuleSet.angleBracketRegex, (_, contents: string) => contents),
-                    language
-                ),
-                ...RuleSet.makeRuleList(str.replace(RuleSet.angleBracketRegex, ''), language),
-            ];
+            yield* RuleSet.makeRuleList(
+                str.replace(RuleSet.angleBracketRegex, (_, contents: string) => contents),
+                language
+            );
+            yield* RuleSet.makeRuleList(str.replace(RuleSet.angleBracketRegex, ''), language);
+            return;
         }
 
         // Handle greek letters
         const greekLetter = RuleSet.greekLetters.find(letter => str.includes(letter));
         if (greekLetter) {
-            return [
-                ...RuleSet.makeRuleList(str.replaceAll(greekLetter, '+'), language),
-                ...RuleSet.makeRuleList(str.replaceAll(greekLetter, '-'), language),
-            ];
+            yield* RuleSet.makeRuleList(str.replaceAll(greekLetter, '+'), language);
+            yield* RuleSet.makeRuleList(str.replaceAll(greekLetter, '-'), language);
+            return;
         }
 
         // Base case
-        return [new Rule(str, language)];
+        yield new Rule(str, language);
     }
 
     process(word: Phoneme[]): Phoneme[] {
