@@ -1,10 +1,16 @@
 import Phoneme from './models/Phoneme';
 import PhonemeMatcher, { FeatureMatcher, PhonemeSymbolMatcher } from './PhonemeMatcher';
+import FeatureDiff from './models/FeatureDiff';
 
 // Workaround for the fact that `protected` doesn't quite do what I want
 const getCanonical = Symbol('getCanonical');
 
 export default abstract class PhonemeStringMatcher {
+    static phonemeClasses = new Map([
+        ['C', new FeatureDiff([], ['syll'])],
+        ['V', new FeatureDiff(['syll'], [])],
+    ]);
+
     // Pseudo-regex that's dynamic for the subscript characters chosen. Matches repeatable segments.
     private static readonly fakeRegex = {
         *[Symbol.matchAll](str: string) {
@@ -53,13 +59,11 @@ export default abstract class PhonemeStringMatcher {
         if (str === NullMatcher.string || str === '') return NullMatcher.instance;
         if (str === '#') return WordBoundaryMatcher.instance;
 
-        // @ts-expect-error Anything with the right Symbol.matchAll works
-        const quantifiers = str.matchAll(PhonemeStringMatcher.fakeRegex);
+        // @ts-expect-error microsoft/TypeScript#36788 and microsoft/TypeScript#55843
+        const quantifiers: Iterable<RegExpExecArray> = str.matchAll(PhonemeStringMatcher.fakeRegex);
         let lastEndIdx = 0;
         const items: PhonemeStringMatcher[] = [];
         for (const quantifier of quantifiers) {
-            if (quantifier.index == undefined)
-                throw new Error('Internal regex error: index is not defined');
             items.push(
                 PhonemeStringMatcher.parseImpl(str.substring(lastEndIdx, quantifier.index)),
                 new RepeatedMatcher(
@@ -103,11 +107,15 @@ export default abstract class PhonemeStringMatcher {
 
         // TODO: diacritics?
         return new CompositePhonemeMatcher(Array.from(str.replace(/\s+/gu, ''), el => {
-            switch (el) {
-                case '#': return WordBoundaryMatcher.instance;
-                case NullMatcher.string: return NullMatcher.instance;
-                default: return new SinglePhonemeStringMatcher(new PhonemeSymbolMatcher(el));
-            }
+            if (el === '#') return WordBoundaryMatcher.instance;
+            if (el === NullMatcher.string) return NullMatcher.instance;
+            const phClass = PhonemeStringMatcher.phonemeClasses.get(el);
+            if (phClass)
+                return new SinglePhonemeStringMatcher(new FeatureMatcher(
+                    new Set(phClass.presentFeatures),
+                    new Set(phClass.absentFeatures)
+                ));
+            return new SinglePhonemeStringMatcher(new PhonemeSymbolMatcher(el));
         }));
     };
 
@@ -228,9 +236,9 @@ class CompositePhonemeMatcher extends MultipleStringMatcher {
 }
 
 export class RepeatedMatcher extends PhonemeStringMatcher {
-    static subscripts:
-    [string, string, string, string, string, string, string, string, string, string]
-        = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+    static subscripts = (
+        ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉']
+    ) satisfies [string, ...string[]];
 
     constructor(private readonly base: PhonemeStringMatcher, private readonly minCount = 0) {
         super();

@@ -1,8 +1,9 @@
 import last from 'lodash/last';
 import Rule from './Rule';
 import Phoneme from './models/Phoneme';
-import { NullMatcher, RepeatedMatcher } from './PhonemeStringMatcher';
+import PhonemeStringMatcher, { NullMatcher, RepeatedMatcher } from './PhonemeStringMatcher';
 import Language from './models/Language';
+import FeatureDiff from './models/FeatureDiff';
 
 /**
  * A class representing a group of sound-change rules that do not feed into each other.
@@ -32,6 +33,10 @@ export default class RuleSet {
         return Rule.arrow;
     }
     static set arrow(str: string) {
+        if (RuleSet.angleBracketRegex.test(str))
+            throw new SyntaxError(
+                `Arrow symbol ${str} could be mistaken for angle-bracketed group`
+            );
         Rule.arrow = str;
     }
 
@@ -55,15 +60,33 @@ export default class RuleSet {
     static set subscripts(strs: typeof RepeatedMatcher.subscripts) {
         RepeatedMatcher.subscripts = strs;
     }
+    
+    /**
+     * The phoneme classes abbreviated with a single letter, such as `C` for consonants. Each
+     * entry's key is the letter used for it, and the value is the features that symbol stands for.
+     * Default value: `{ C: '[-syll]', V: '[+syll]' }`
+     */
+    static get phonemeClasses(): Map<string, FeatureDiff<string[]>> {
+        return PhonemeStringMatcher.phonemeClasses;
+    }
+    static set phonemeClasses(map: Map<string, FeatureDiff<string[]>>) {
+        PhonemeStringMatcher.phonemeClasses = map;
+    }
 
     private readonly rules: Rule[];
 
     /**
      * Parse out a sound change for a given language.
      * @param str The sound change string to be parsed.
-     * @param language The language for which the sound change is applied.s
+     * @param language The language for which the sound change is applied.
      */
     constructor(str: string, language: Language) {
+        // This should never happen in theory, but in untyped JS it may be easy to forget, and
+        // doesn't surface as an error until surprisingly late.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!language)
+            throw new TypeError('Missing language argument in RuleSet ctor');
+
         this.rules = Array.from(RuleSet.makeRuleList(str, language));
     }
 

@@ -48,6 +48,9 @@ export default class Rule {
             }
             return Array.from(el.replace(/\s+/gu, ''), c => {
                 if (c === NullMatcher.string) return null;
+                if (PhonemeStringMatcher.phonemeClasses.has(el))
+                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                    return PhonemeStringMatcher.phonemeClasses.get(el)!;
                 const phoneme = this.language.phonemes.find(ph => ph.symbol === c);
                 if (!phoneme) throw new Error(`No phoneme with symbol '${c}'`);
                 return phoneme;
