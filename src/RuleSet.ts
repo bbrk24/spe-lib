@@ -33,10 +33,11 @@ export default class RuleSet {
         return Rule.arrow;
     }
     static set arrow(str: string) {
-        if (RuleSet.angleBracketRegex.test(str))
+        if (RuleSet.angleBracketRegex.test(str)) {
             throw new SyntaxError(
                 `Arrow symbol ${str} could be mistaken for angle-bracketed group`
-            );
+            ); 
+        }
         Rule.arrow = str;
     }
 
@@ -131,9 +132,9 @@ export default class RuleSet {
     process(word: Phoneme[]): Phoneme[] {
         let result = [{ changed: false, segment: word }];
         for (const rule of this.rules) {
-            if (rule.requiresWordInitial && rule.requiresWordFinal && result.length > 1)
-                continue;
-            else if (rule.requiresWordFinal) {
+            if (rule.requiresWordInitial && rule.requiresWordFinal && result.length > 1) 
+                continue; 
+            if (rule.requiresWordFinal) {
                 const { changed, segment } = last(result) ?? { changed: true, segment: [] };
                 if (changed) continue;
                 result.pop();
@@ -154,11 +155,10 @@ export default class RuleSet {
             result = result.reduce<typeof result>((prev, el) => {
                 const lastSeg = last(prev);
                 if (!lastSeg) return [el];
-                if (lastSeg.changed === el.changed) {
+                if (lastSeg.changed === el.changed) 
                     lastSeg.segment.push(...el.segment);
-                } else {
+                else
                     prev.push(el);
-                }
                 return prev;
             }, []);
         }

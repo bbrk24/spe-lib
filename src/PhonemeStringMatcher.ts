@@ -110,11 +110,12 @@ export default abstract class PhonemeStringMatcher {
             if (el === '#') return WordBoundaryMatcher.instance;
             if (el === NullMatcher.string) return NullMatcher.instance;
             const phClass = PhonemeStringMatcher.phonemeClasses.get(el);
-            if (phClass)
+            if (phClass) {
                 return new SinglePhonemeStringMatcher(new FeatureMatcher(
                     new Set(phClass.presentFeatures),
                     new Set(phClass.absentFeatures)
-                ));
+                )); 
+            }
             return new SinglePhonemeStringMatcher(new PhonemeSymbolMatcher(el));
         }));
     };

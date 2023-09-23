@@ -55,10 +55,21 @@ rules:
     - single
   '@typescript-eslint/semi': error
   '@typescript-eslint/sort-type-constituents': error
+  arrow-body-style: error
+  curly:
+    - error
+    - multi-or-nest
+    - consistent
+  eqeqeq:
+    - error
+    - smart
   linebreak-style:
     - error
     - unix
   max-len:
     - error
     - code: 100
+  no-else-return:
+    - error
+    - allowElseIf: false
   prefer-spread: 'off'
