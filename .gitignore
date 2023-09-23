@@ -3,3 +3,4 @@ dist/
 *.js
 !/test.js
 !/tests/*.js
+*.tgz

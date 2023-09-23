@@ -4,7 +4,18 @@ import Phoneme from './models/Phoneme';
 import { NullMatcher, RepeatedMatcher } from './PhonemeStringMatcher';
 import Language from './models/Language';
 
+/**
+ * A class representing a group of sound-change rules that do not feed into each other.
+ * 
+ * A group of non-feeding sound changes is represented by a single string, such as
+ * `a → b / c<d>_<e>f`.
+ */
 export default class RuleSet {
+    /**
+     * The list of strings considered to be Greek letters for the purposes of feature sets like
+     * `[αhigh]` (`[+high]` and `[-high]`). You may want to modify this if you have any phonemes
+     * that are Greek letters, such as /β/ or /θ/.
+     */
     static greekLetters = [...'αβγδεζηθικλμνξοπρσςτυφχψω'];
     
     // Intentionally omitting the /g flag -- all paren groups are independent
@@ -12,6 +23,11 @@ export default class RuleSet {
 
     private static readonly angleBracketRegex = /<([^>]+)>/gu;
 
+    /**
+     * The character used for the arrow in rules. Defaults to `→`.
+     * 
+     * Be wary setting this to `>` if you have rules with angle brackets!
+     */
     static get arrow(): string {
         return Rule.arrow;
     }
@@ -19,6 +35,9 @@ export default class RuleSet {
         Rule.arrow = str;
     }
 
+    /**
+     * The string used to represent no sounds. Defaults to `Ø`.
+     */
     static get null(): string {
         return NullMatcher.string;
     }
@@ -26,17 +45,26 @@ export default class RuleSet {
         NullMatcher.string = str;
     }
 
-    static get subscripts(): string[] {
+    /**
+     * A 10-tuple of strings used to represent subscript digits 0-9. Defaults to
+     * `₀,₁,₂,₃,₄,₅,₆,₇,₈,₉`.
+     */
+    static get subscripts(): typeof RepeatedMatcher.subscripts {
         return RepeatedMatcher.subscripts;
     }
-    static set subscripts(strs: string[]) {
+    static set subscripts(strs: typeof RepeatedMatcher.subscripts) {
         RepeatedMatcher.subscripts = strs;
     }
 
     private readonly rules: Rule[];
 
-    constructor(readonly representation: string, language: Language) {
-        this.rules = Array.from(RuleSet.makeRuleList(representation, language));
+    /**
+     * Parse out a sound change for a given language.
+     * @param str The sound change string to be parsed.
+     * @param language The language for which the sound change is applied.s
+     */
+    constructor(str: string, language: Language) {
+        this.rules = Array.from(RuleSet.makeRuleList(str, language));
     }
 
     private static *makeRuleList(str: string, language: Language): Generator<Rule, void> {
@@ -72,6 +100,11 @@ export default class RuleSet {
         yield new Rule(str, language);
     }
 
+    /**
+     * Evaluate the sound changes for the particular word.
+     * @param word The list of phonemes in the word to evaluate.
+     * @returns The new word after the sound change is applied.
+     */
     process(word: Phoneme[]): Phoneme[] {
         let result = [{ changed: false, segment: word }];
         for (const rule of this.rules) {

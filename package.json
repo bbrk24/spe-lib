@@ -22,12 +22,12 @@
     }
   },
   "scripts": {
-    "prepublishOnly": "tsc",
+    "prepack": "tsc",
     "test": "tsc && ./test.js",
     "lint": "eslint src"
   },
   "files": [
-    "dist/*",
-    "dist/**/*"
+    "dist/**/*.js",
+    "dist/**/*.d.ts"
   ]
 }
