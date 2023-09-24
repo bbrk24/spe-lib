@@ -50,3 +50,13 @@ testAssert(
     ruleSet4.process([a, p, a]),
     [a, f, a]
 );
+
+const ruleSet5 = new RuleSet('V → [αhigh] / _[αhigh]', lessSmolLang);
+RuleSet.arrow = '->';
+const alpha = RuleSet.greekLetters.shift();
+testAssert(
+    ruleSet5.toString(),
+    'V -> [βhigh] / _[βhigh]'
+);
+RuleSet.arrow = '→';
+RuleSet.greekLetters.unshift(alpha);

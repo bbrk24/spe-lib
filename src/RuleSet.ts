@@ -5,6 +5,21 @@ import PhonemeStringMatcher, { NullMatcher, RepeatedMatcher } from './PhonemeStr
 import Language from './models/Language';
 import FeatureDiff from './models/FeatureDiff';
 
+const enum ReprKind {
+    Arrow,
+    GreekLetter,
+    Null,
+    RawString,
+    Subscript,
+}
+
+type ReprPart =
+    | { kind: ReprKind.Arrow | ReprKind.Null }
+    | { kind: ReprKind.GreekLetter, value: number }
+    | { kind: ReprKind.RawString, value: string }
+    | { kind: ReprKind.Subscript, value: number[] }
+;
+
 /**
  * A class representing a group of sound-change rules that do not feed into each other.
  * 
@@ -75,6 +90,7 @@ export default class RuleSet {
     }
 
     private readonly rules: Rule[];
+    private readonly representation: ReprPart[];
 
     /**
      * Parse out a sound change for a given language.
@@ -89,6 +105,59 @@ export default class RuleSet {
             throw new TypeError('Missing language argument in RuleSet ctor');
 
         this.rules = Array.from(RuleSet.makeRuleList(str, language));
+        this.representation = Array.from(RuleSet.parseRepresentation(str));
+    }
+
+    private static *parseRepresentation(str: string): Generator<ReprPart, void> {
+        if (str.length === 0) return;
+
+        const arrowSplit = str.split(Rule.arrow);
+        if (arrowSplit.length > 1) {
+            yield* this.parseRepresentation(arrowSplit[0]);
+            yield { kind: ReprKind.Arrow };
+            yield* this.parseRepresentation(arrowSplit[1]);
+            return;
+        }
+
+        const nullSplit = str.split(NullMatcher.string);
+        if (nullSplit.length > 1) {
+            for (let i = 0; i < nullSplit.length; ++i) {
+                if (i) yield { kind: ReprKind.Null };
+                yield* this.parseRepresentation(nullSplit[i]);
+            }
+            return;
+        }
+
+        for (let i = 0; i < this.greekLetters.length; ++i) {
+            const parts = str.split(this.greekLetters[i]);
+            if (parts.length > 1) {
+                for (let j = 0; j < parts.length; ++j) {
+                    if (j) yield { kind: ReprKind.GreekLetter, value: i };
+                    yield* this.parseRepresentation(parts[j]);
+                }
+                return;
+            }
+        }
+
+        let subscriptLoc = Math.min(...RepeatedMatcher.subscripts.map(el => str.indexOf(el))
+            .filter(x => x >= 0));
+        if (Number.isFinite(subscriptLoc)) {
+            yield* this.parseRepresentation(str.substring(0, subscriptLoc));
+
+            const subscriptArr = [];
+            let subscriptId = RepeatedMatcher.subscripts.indexOf(str[subscriptLoc]);
+            while (subscriptId >= 0) {
+                subscriptArr.push(subscriptId);
+                ++subscriptLoc;
+                subscriptId = RepeatedMatcher.subscripts.indexOf(str[subscriptLoc]);
+            }
+            yield { kind: ReprKind.Subscript, value: subscriptArr };
+            
+            yield* this.parseRepresentation(str.substring(subscriptLoc));
+            return;
+        }
+
+        yield { kind: ReprKind.RawString, value: str };
     }
 
     private static *makeRuleList(str: string, language: Language): Generator<Rule, void> {
@@ -198,5 +267,22 @@ export default class RuleSet {
         if (Array.isArray(word)) return this.processPhonemeArray(word);
         if (typeof word == 'string') return this.processString(word);
         throw new TypeError('RuleSet#process must be given a string or array');
+    }
+
+    toString(): string {
+        return this.representation.map(el => {
+            switch (el.kind) {
+                case ReprKind.Arrow:
+                    return Rule.arrow;
+                case ReprKind.GreekLetter:
+                    return RuleSet.greekLetters[el.value];
+                case ReprKind.Null:
+                    return NullMatcher.string;
+                case ReprKind.RawString:
+                    return el.value;
+                case ReprKind.Subscript:
+                    return el.value.map(i => RepeatedMatcher.subscripts[i]).join('');
+            }
+        }).join('');
     }
 }
