@@ -50,31 +50,34 @@ export default abstract class PhonemeStringMatcher {
 
     abstract toString(): string;
 
-    static parse(str: string): PhonemeStringMatcher {
-        return PhonemeStringMatcher.parseImpl(str)[getCanonical]();
+    static parse(str: string, segment: (word: string) => Iterable<string>): PhonemeStringMatcher {
+        return PhonemeStringMatcher.parseImpl(segment, str)[getCanonical]();
     }
-    
-    private static readonly parseImpl = (str: string): PhonemeStringMatcher => {
+
+    private static parseImpl(
+        segment: (word: string) => Iterable<string>,
+        str: string
+    ): PhonemeStringMatcher {
         str = str.trim();
         if (str === NullMatcher.string || str === '') return NullMatcher.instance;
         if (str === '#') return WordBoundaryMatcher.instance;
 
         // @ts-expect-error microsoft/TypeScript#36788 and microsoft/TypeScript#55843
-        const quantifiers: Iterable<RegExpExecArray> = str.matchAll(PhonemeStringMatcher.fakeRegex);
+        const quantifiers: Iterable<RegExpExecArray> = str.matchAll(this.fakeRegex);
         let lastEndIdx = 0;
         const items: PhonemeStringMatcher[] = [];
         for (const quantifier of quantifiers) {
             items.push(
-                PhonemeStringMatcher.parseImpl(str.substring(lastEndIdx, quantifier.index)),
+                this.parseImpl(segment, str.substring(lastEndIdx, quantifier.index)),
                 new RepeatedMatcher(
-                    PhonemeStringMatcher.parseImpl(quantifier[1]),
+                    this.parseImpl(segment, quantifier[1]),
                     Number(quantifier[2])
                 )
             );
             lastEndIdx = quantifier.index + quantifier[0].length;
         }
         if (lastEndIdx !== 0) {
-            items.push(PhonemeStringMatcher.parseImpl(str.substring(lastEndIdx)));
+            items.push(this.parseImpl(segment, str.substring(lastEndIdx)));
             return new CompositePhonemeMatcher(items);
         }
 
@@ -87,8 +90,8 @@ export default abstract class PhonemeStringMatcher {
         if (braceParts.length > 1) {
             const parsedSections = braceParts.map((el, i) =>
                 i % 2
-                    ? PhonemeStringMatcher.parseBraceGroup(el)
-                    : PhonemeStringMatcher.parseImpl(el)
+                    ? this.parseBraceGroup(segment, el)
+                    : this.parseImpl(segment, el)
             );
             return new CompositePhonemeMatcher(parsedSections);
         }
@@ -99,14 +102,14 @@ export default abstract class PhonemeStringMatcher {
         if (bracketParts.length > 1) {
             const parsedSections = bracketParts.map((el, i) =>
                 i % 2
-                    ? PhonemeStringMatcher.parseFeatureSet(el)
-                    : PhonemeStringMatcher.parseImpl(el)
+                    ? this.parseFeatureSet(el)
+                    : this.parseImpl(segment, el)
             );
             return new CompositePhonemeMatcher(parsedSections);
         }
 
         // TODO: diacritics?
-        return new CompositePhonemeMatcher(Array.from(str.replace(/\s+/gu, ''), el => {
+        return new CompositePhonemeMatcher(Array.from(segment(str), el => {
             if (el === '#') return WordBoundaryMatcher.instance;
             if (el === NullMatcher.string) return NullMatcher.instance;
             const phClass = PhonemeStringMatcher.phonemeClasses.get(el);
@@ -118,10 +121,13 @@ export default abstract class PhonemeStringMatcher {
             }
             return new SinglePhonemeStringMatcher(new PhonemeSymbolMatcher(el));
         }));
-    };
+    }
 
-    private static parseBraceGroup(str: string) {
-        return new PhonemeSetMatcher(str.split(',').map(PhonemeStringMatcher.parseImpl));
+    private static parseBraceGroup(segment: (word: string) => Iterable<string>, str: string) {
+        return new PhonemeSetMatcher(
+            str.split(',')
+                .map(this.parseImpl.bind(this, segment))
+        );
     }
 
     private static parseFeatureSet(str: string) {
@@ -291,7 +297,7 @@ class PhonemeSetMatcher extends MultipleStringMatcher {
     override matchLength(
         ...args: [readonly Phoneme[], number] | [readonly Phoneme[]]
     ): number {
-        return Math.max(...this.matchers.map(el => el.matchLength.apply(el, args)));
+        return Math.max(-1, ...this.matchers.map(el => el.matchLength.apply(el, args)));
     }
 
     override toString(): string {

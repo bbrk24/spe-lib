@@ -20,6 +20,10 @@ testAssert(
     ruleSet.process([u, e]),
     [u, i]
 );
+testAssert(
+    ruleSet.process('ie'),
+    'ii'
+);
 
 const ruleSet2 = new RuleSet('i → [-high] / _[-high]', smolLang);
 

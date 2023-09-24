@@ -81,7 +81,7 @@ export default class RuleSet {
      * @param str The sound change string to be parsed.
      * @param language The language for which the sound change is applied.
      */
-    constructor(str: string, language: Language) {
+    constructor(str: string, private readonly language: Language) {
         // This should never happen in theory, but in untyped JS it may be easy to forget, and
         // doesn't surface as an error until surprisingly late.
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -93,30 +93,30 @@ export default class RuleSet {
 
     private static *makeRuleList(str: string, language: Language): Generator<Rule, void> {
         // Handle parens
-        if (RuleSet.parenGroupRegex.test(str)) {
-            yield* RuleSet.makeRuleList(
-                str.replace(RuleSet.parenGroupRegex, (_, contents: string) => contents),
+        if (this.parenGroupRegex.test(str)) {
+            yield* this.makeRuleList(
+                str.replace(this.parenGroupRegex, (_, contents: string) => contents),
                 language
             );
-            yield* RuleSet.makeRuleList(str.replace(RuleSet.parenGroupRegex, ''), language);
+            yield* this.makeRuleList(str.replace(this.parenGroupRegex, ''), language);
             return;
         }
 
         // Handle angle brackets
-        if (RuleSet.angleBracketRegex.test(str)) {
-            yield* RuleSet.makeRuleList(
-                str.replace(RuleSet.angleBracketRegex, (_, contents: string) => contents),
+        if (this.angleBracketRegex.test(str)) {
+            yield* this.makeRuleList(
+                str.replace(this.angleBracketRegex, (_, contents: string) => contents),
                 language
             );
-            yield* RuleSet.makeRuleList(str.replace(RuleSet.angleBracketRegex, ''), language);
+            yield* this.makeRuleList(str.replace(this.angleBracketRegex, ''), language);
             return;
         }
 
         // Handle greek letters
-        const greekLetter = RuleSet.greekLetters.find(letter => str.includes(letter));
+        const greekLetter = this.greekLetters.find(letter => str.includes(letter));
         if (greekLetter) {
-            yield* RuleSet.makeRuleList(str.replaceAll(greekLetter, '+'), language);
-            yield* RuleSet.makeRuleList(str.replaceAll(greekLetter, '-'), language);
+            yield* this.makeRuleList(str.replaceAll(greekLetter, '+'), language);
+            yield* this.makeRuleList(str.replaceAll(greekLetter, '-'), language);
             return;
         }
 
@@ -126,10 +126,26 @@ export default class RuleSet {
 
     /**
      * Evaluate the sound changes for the particular word.
+     * @param word A string representing the word to evaluate.
+     * @returns The new word after the sound change is applied.
+     */
+    processString(word: string): string {
+        return this.processPhonemeArray(
+            Array.from(this.language.segmentWord(word), symbol => {
+                const phoneme = this.language.phonemes.find(ph => ph.symbol === symbol);
+                if (!phoneme)
+                    throw new SyntaxError(`Word '${word}' contains non-phoneme '${symbol}'`);
+                return phoneme;
+            })
+        ).join('');
+    }
+
+    /**
+     * Evaluate the sound changes for the particular word.
      * @param word The list of phonemes in the word to evaluate.
      * @returns The new word after the sound change is applied.
      */
-    process(word: Phoneme[]): Phoneme[] {
+    processPhonemeArray(word: Phoneme[]): Phoneme[] {
         let result = [{ changed: false, segment: word }];
         for (const rule of this.rules) {
             if (rule.requiresWordInitial && rule.requiresWordFinal && result.length > 1) 
@@ -163,5 +179,24 @@ export default class RuleSet {
             }, []);
         }
         return result.reduce<Phoneme[]>((prev, el) => prev.concat(el.segment), []);
+    }
+
+    /**
+     * Evaluate the sound changes for the particular word.
+     * @param word The list of phonemes in the word to evaluate.
+     * @returns The new word after the sound change is applied.
+     */
+    process(word: Phoneme[]): Phoneme[];
+    /**
+     * Evaluate the sound changes for the particular word.
+     * @param word A string representing the word to evaluate.
+     * @returns The new word after the sound change is applied.
+     */
+    process(word: string): string;
+
+    process(word: Phoneme[] | string): Phoneme[] | string {
+        if (Array.isArray(word)) return this.processPhonemeArray(word);
+        if (typeof word == 'string') return this.processString(word);
+        throw new TypeError('RuleSet#process must be given a string or array');
     }
 }

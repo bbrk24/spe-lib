@@ -5,10 +5,39 @@ import FeatureDiff from './FeatureDiff';
 /** A class representing a language, which consists of a group of phonemes. */
 export default class Language {
     /**
+     * All the phonemes present in the language, ordered from longest to shortest string
+     * representation.
+     */
+    readonly phonemes: readonly Phoneme[];
+
+    /**
      * @param phonemes The complete set of phonemes the language has.
      */
-    constructor(public phonemes: Phoneme[]) {
+    constructor(phonemes: Phoneme[]) {
+        this.phonemes = phonemes.sort(
+            (a, b) =>
+                // Sort first by symbol length descending...
+                (b.symbol.length - a.symbol.length)
+                // ...breaking ties by feature count ascending.
+                || (a.features.size - b.features.size)
+        );
     }
+
+    /**
+     * How to segment a string into phonemes. This property is intentionally mutable per-instance.
+     * 
+     * This may receive characters that do not correspond to a phoneme, such as `#` (word boundary
+     * marker) or `V` (phoneme class abbreviation), so this function must handle those cases
+     * gracefully.
+     */
+    segmentWord: (this: Language, word: string) => Iterable<string> = function*(word) {
+        word = word.replace(/\s+/gu, '');
+        while (word !== '') {
+            const symbol = this.phonemes.find(ph => word.startsWith(ph.symbol))?.symbol ?? word[0];
+            word = word.substring(symbol.length);
+            yield symbol;
+        }
+    };
 
     /**
      * Apply a `FeatureDiff` to a `Phoneme`.

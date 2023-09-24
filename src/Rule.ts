@@ -18,14 +18,15 @@ export default class Rule {
 
     constructor(str: string, private readonly language: Language) {
         const arrowSplit = str.split(Rule.arrow);
-        this.input = PhonemeStringMatcher.parse(arrowSplit[0]);
+        const segment = language.segmentWord.bind(language);
+        this.input = PhonemeStringMatcher.parse(arrowSplit[0], segment);
         const slashSplit = arrowSplit[1].split('/');
         const contextSplit = slashSplit[1].split('_').filter(Boolean);
         this.requiresWordInitial = contextSplit[0].includes('#');
-        this.contextPrefix = PhonemeStringMatcher.parse(contextSplit[0]);
+        this.contextPrefix = PhonemeStringMatcher.parse(contextSplit[0], segment);
         contextSplit[1] ??= '';
         this.requiresWordFinal = contextSplit[1].includes('#');
-        this.contextSuffix = PhonemeStringMatcher.parse(contextSplit[1]);
+        this.contextSuffix = PhonemeStringMatcher.parse(contextSplit[1], segment);
         const outputStr = slashSplit[0].trim();
         this.output = this.parseOutputStr(outputStr);
     }
@@ -46,13 +47,13 @@ export default class Rule {
                     ),
                 ];
             }
-            return Array.from(el.replace(/\s+/gu, ''), c => {
+            return Array.from(this.language.segmentWord(el), c => {
                 if (c === NullMatcher.string) return null;
                 if (PhonemeStringMatcher.phonemeClasses.has(el))
                     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                     return PhonemeStringMatcher.phonemeClasses.get(el)!;
                 const phoneme = this.language.phonemes.find(ph => ph.symbol === c);
-                if (!phoneme) throw new Error(`No phoneme with symbol '${c}'`);
+                if (!phoneme) throw new SyntaxError(`No phoneme with symbol '${c}'`);
                 return phoneme;
             });
         });
@@ -61,8 +62,15 @@ export default class Rule {
     private apply(input: Phoneme[]) {
         if (!this.output.some(el => el instanceof FeatureDiff))
             return this.output.filter(Boolean) as Phoneme[];
-        if (input.length !== this.output.length)
-            throw new Error('Length mismatch');
+        if (input.length !== this.output.length) {
+            throw new Error(
+                `Length mismatch: Cannot apply feature diffs (output length ${
+                    this.output.length
+                }, input length ${
+                    input.length
+                }). Did you forget a ${NullMatcher.string} on one side?`
+            ); 
+        }
         return zip(input, this.output)
             .flatMap(([i, o]) =>
                 // It will only ever be undefined if the lengths are different
