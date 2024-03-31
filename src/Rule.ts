@@ -32,7 +32,8 @@ export default class Rule {
     }
 
     private parseOutputStr(str: string): (FeatureDiff<string[]> | Phoneme | null)[] {
-        // TODO: verify that brackets are balanced
+        if (/\[[^\]]*\[|\][^[]*\]/gu.test(str))
+            throw new SyntaxError(`Nested or unbalanced brackets in string: '${str}'`);
         const parts = str.split(/[[\]]/gu);
         if (parts.length % 2 !== 1)
             throw new SyntaxError(`Odd number of brackets in string: '${str}'`);

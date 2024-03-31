@@ -247,7 +247,7 @@ export default class RuleSet {
                 return prev;
             }, []);
         }
-        return result.reduce<Phoneme[]>((prev, el) => prev.concat(el.segment), []);
+        return result.flatMap(el => el.segment);
     }
 
     /**

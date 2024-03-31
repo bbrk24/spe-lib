@@ -82,8 +82,9 @@ export default abstract class PhonemeStringMatcher {
         }
 
         // Lack of nesting makes this easy to parse
-        // TODO: verify that brackets are balanced
 
+        if (/\{[^}]*\{|\}[^{]*\}/gu.test(str))
+            throw new SyntaxError(`Nested or unbalanced braces in string: '${str}'`);
         const braceParts = str.split(/[{}]/gu);
         if (braceParts.length % 2 !== 1)
             throw new SyntaxError(`Odd number of braces in string: '${str}'`);
@@ -108,7 +109,6 @@ export default abstract class PhonemeStringMatcher {
             return new CompositePhonemeMatcher(parsedSections);
         }
 
-        // TODO: diacritics?
         return new CompositePhonemeMatcher(Array.from(segment(str), el => {
             if (el === '#') return WordBoundaryMatcher.instance;
             if (el === NullMatcher.string) return NullMatcher.instance;
@@ -275,15 +275,15 @@ export class RepeatedMatcher extends PhonemeStringMatcher {
         return `${baseStr.repeat(this.minCount)}(${baseStr})*`;
     }
 
-    override [getCanonical](): PhonemeStringMatcher {
+    override [getCanonical](): RepeatedMatcher {
         const c = this.base[getCanonical]();
         if (c instanceof RepeatedMatcher) {
-            if (this.minCount === 0) return c;
-            return new RepeatedMatcher(c.base, c.minCount + this.minCount);
+            if (this.minCount === 1) return c;
+            return new RepeatedMatcher(c.base, c.minCount * this.minCount);
         }
         if (this.base === c)
             return this;
-        return new RepeatedMatcher(this.base, this.minCount);
+        return new RepeatedMatcher(c, this.minCount);
     }
 }
 
