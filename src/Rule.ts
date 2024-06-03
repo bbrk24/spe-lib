@@ -21,7 +21,7 @@ export default class Rule {
         const segment = language.segmentWord.bind(language);
         this.input = PhonemeStringMatcher.parse(arrowSplit[0], segment);
         const slashSplit = arrowSplit[1].split('/');
-        const contextSplit = slashSplit[1].split('_').filter(Boolean);
+        const contextSplit = slashSplit[1].split('_');
         this.requiresWordInitial = contextSplit[0].includes('#');
         this.contextPrefix = PhonemeStringMatcher.parse(contextSplit[0], segment);
         contextSplit[1] ??= '';

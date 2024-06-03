@@ -60,3 +60,9 @@ testAssert(
 );
 RuleSet.arrow = '→';
 RuleSet.greekLetters.unshift(alpha);
+
+const ruleSet6 = new RuleSet('a → i /_#', smolLang);
+testAssert(
+    ruleSet6.process([a, a]),
+    [a, i]
+);
